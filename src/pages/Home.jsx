@@ -10,7 +10,8 @@ export default function Home() {
         <div
           className="absolute inset-0 bg-cover bg-center"
           style={{
-            backgroundImage: "url('/images/hero-bg.jpg')",
+            backgroundImage:
+              "url('https://plus.unsplash.com/premium_photo-1661346028312-5fa83435f5c0?fm=jpg&q=60&w=3000&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MXx8ZG9jdG9yJTIwYmFja2dyb3VuZHxlbnwwfHwwfHx8MA%3D%3D')",
             filter: "brightness(0.85)",
           }}
         ></div>
@@ -26,15 +27,14 @@ export default function Home() {
               Та байгаа газраасаа, хүссэн цагтаа эрүүл мэндийн тусламж,
               үйлчилгээ авах боломжтой.
             </p>
-            <div className="flex flex-wrap gap-4 mt-6">
-            </div>
+            <div className="flex flex-wrap gap-4 mt-6"></div>
           </div>
 
           {/* Foreground Image */}
           <div className="flex-1">
             <img
               src="/images/mom-baby.png"
-              alt="Ээж хүүхэд"
+              alt=""
               className="rounded-3xl shadow-2xl w-full object-cover"
             />
           </div>
@@ -44,13 +44,11 @@ export default function Home() {
       {/* ABOUT SECTION */}
       <section className="bg-white py-16 border-t border-gray-100">
         <div className="max-w-6xl mx-auto px-6 text-center space-y-8">
-          <h2 className="text-3xl font-semibold text-gray-800">
-            Бидний тухай
-          </h2>
+          <h2 className="text-3xl font-semibold text-gray-800">Бидний тухай</h2>
           <p className="text-gray-600 max-w-3xl mx-auto text-lg leading-relaxed">
-            “Өрхийн эмнэлгийн нэгдсэн систем” нь хэрэглэгчдэд онлайн цаг захиалга,
-            эмчийн зөвлөгөө, лабораторийн хариу авах зэрэг үйлчилгээг хялбар аргаар
-            үзүүлэх зорилготой.
+            “Өрхийн эмнэлгийн нэгдсэн систем” нь хэрэглэгчдэд онлайн цаг
+            захиалга, эмчийн зөвлөгөө, лабораторийн хариу авах зэрэг үйлчилгээг
+            хялбар аргаар үзүүлэх зорилготой.
           </p>
         </div>
       </section>
@@ -71,7 +69,8 @@ export default function Home() {
               Мэргэжлийн зөвлөгөө
             </h3>
             <p className="text-gray-600">
-              Тэргүүлэх эмч нарын зөвлөгөөг видео болон бичгийн хэлбэрээр аваарай.
+              Тэргүүлэх эмч нарын зөвлөгөөг видео болон бичгийн хэлбэрээр
+              аваарай.
             </p>
           </div>
           <div className="p-6 bg-white rounded-2xl shadow-md hover:shadow-lg transition">
@@ -106,15 +105,32 @@ export default function Home() {
           <div>
             <h4 className="font-semibold text-white mb-3">Холбоосууд</h4>
             <ul className="space-y-2">
-              <li><Link to="/services" className="hover:text-white">Үйлчилгээ</Link></li>
-              <li><Link to="/doctors" className="hover:text-white">Эмч нар</Link></li>
-              <li><Link to="/login" className="hover:text-white">Нэвтрэх</Link></li>
-              <li><Link to="/register" className="hover:text-white">Бүртгүүлэх</Link></li>
+              <li>
+                <Link to="/services" className="hover:text-white">
+                  Үйлчилгээ
+                </Link>
+              </li>
+              <li>
+                <Link to="/doctors" className="hover:text-white">
+                  Эмч нар
+                </Link>
+              </li>
+              <li>
+                <Link to="/login" className="hover:text-white">
+                  Нэвтрэх
+                </Link>
+              </li>
+              <li>
+                <Link to="/register" className="hover:text-white">
+                  Бүртгүүлэх
+                </Link>
+              </li>
             </ul>
           </div>
         </div>
         <div className="text-center text-gray-500 text-sm mt-10">
-          © {new Date().getFullYear()} Эрүүл мэндийн систем. Бүх эрх хуулиар хамгаалагдсан.
+          © {new Date().getFullYear()} Эрүүл мэндийн систем. Бүх эрх хуулиар
+          хамгаалагдсан.
         </div>
       </footer>
     </div>

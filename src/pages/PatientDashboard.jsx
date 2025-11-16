@@ -12,6 +12,7 @@ export default function PatientDashboard() {
     date: ""
   });
   const [slots, setSlots] = useState([]);
+  const [availableDates, setAvailableDates] = useState([]);
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("book"); // "book" or "my-appointments"
@@ -43,21 +44,42 @@ export default function PatientDashboard() {
   const loadSlots = async (doctorId, date) => {
     if (!doctorId) {
       setSlots([]);
+      setAvailableDates([]);
       return;
     }
     try {
       const { data } = await api.get(`/schedules/doctor/${doctorId}`);
-      const availableSlots = (data.slots || [])
+      const allAvailableSlots = (data.slots || [])
         .filter(s => !s.booked)
         .filter(s => {
-          if (!date) return true;
-          const slotDate = new Date(s.start).toISOString().split('T')[0];
-          return slotDate === date;
+          const slotDate = new Date(s.start);
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          return slotDate >= today;
         })
         .sort((a, b) => new Date(a.start) - new Date(b.start));
-      setSlots(availableSlots);
+
+      // Extract unique dates that have available slots
+      const datesWithSlots = new Set();
+      allAvailableSlots.forEach(slot => {
+        const slotDate = new Date(slot.start).toISOString().split('T')[0];
+        datesWithSlots.add(slotDate);
+      });
+      setAvailableDates(Array.from(datesWithSlots).sort());
+
+      // Filter slots for selected date
+      if (date) {
+        const filteredSlots = allAvailableSlots.filter(s => {
+          const slotDate = new Date(s.start).toISOString().split('T')[0];
+          return slotDate === date;
+        });
+        setSlots(filteredSlots);
+      } else {
+        setSlots([]);
+      }
     } catch (err) {
       setSlots([]);
+      setAvailableDates([]);
       setMessage("Цагийн хуваарийг ачаалахад алдаа гарлаа");
     }
   };
@@ -68,6 +90,7 @@ export default function PatientDashboard() {
       loadSlots(doctorId, null);
     } else {
       setSlots([]);
+      setAvailableDates([]);
     }
   };
 
@@ -134,16 +157,24 @@ export default function PatientDashboard() {
     }
   };
 
-  // Get today and next 30 days for date picker
-  const getAvailableDates = () => {
-    const dates = [];
+  const formatDate = (dateStr) => {
+    const d = new Date(dateStr);
     const today = new Date();
-    for (let i = 0; i < 30; i++) {
-      const date = new Date(today);
-      date.setDate(today.getDate() + i);
-      dates.push(date.toISOString().split('T')[0]);
-    }
-    return dates;
+    today.setHours(0, 0, 0, 0);
+    const isToday = d.toDateString() === today.toDateString();
+    const tomorrow = new Date(today);
+    tomorrow.setDate(today.getDate() + 1);
+    const isTomorrow = d.toDateString() === tomorrow.toDateString();
+    
+    if (isToday) return "Өнөөдөр";
+    if (isTomorrow) return "Маргааш";
+    
+    return d.toLocaleDateString('mn-MN', { 
+      weekday: 'short', 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
+    });
   };
 
   return (
@@ -204,7 +235,16 @@ export default function PatientDashboard() {
                 </label>
                 <select
                   value={selected.serviceId}
-                  onChange={(e) => setSelected({ ...selected, serviceId: e.target.value })}
+                  onChange={(e) => {
+                    setSelected({ 
+                      serviceId: e.target.value, 
+                      doctorId: "", 
+                      slotStart: "", 
+                      date: "" 
+                    });
+                    setSlots([]);
+                    setAvailableDates([]);
+                  }}
                   className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all outline-none"
                 >
                   <option value="">Үйлчилгээ сонгох...</option>
@@ -221,45 +261,78 @@ export default function PatientDashboard() {
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
                   2. Эмч сонгох <span className="text-red-500">*</span>
                 </label>
-                <select
-                  value={selected.doctorId}
-                  onChange={(e) => handleDoctorChange(e.target.value)}
-                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all outline-none"
-                  disabled={!selected.serviceId}
-                >
-                  <option value="">Эмч сонгох...</option>
-                  {docs.map(d => (
-                    <option key={d._id} value={d._id}>
-                      {d.name} {d.specialization ? `- ${d.specialization}` : ""}
-                    </option>
-                  ))}
-                </select>
+                {!selected.serviceId ? (
+                  <div className="p-4 bg-gray-50 border-2 border-gray-200 rounded-lg text-gray-600">
+                    Эхлээд үйлчилгээ сонгоно уу
+                  </div>
+                ) : (
+                  <>
+                    <select
+                      value={selected.doctorId}
+                      onChange={(e) => handleDoctorChange(e.target.value)}
+                      className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all outline-none"
+                    >
+                      <option value="">Эмч сонгох...</option>
+                      {docs
+                        .filter(d => {
+                          // Filter doctors who have the selected service
+                          if (!selected.serviceId) return true;
+                          return d.services && d.services.some(s => 
+                            (s._id || s) === selected.serviceId
+                          );
+                        })
+                        .map(d => (
+                          <option key={d._id} value={d._id}>
+                            {d.name} {d.specialization ? `- ${d.specialization}` : ""}
+                          </option>
+                        ))}
+                    </select>
+                    {docs.filter(d => {
+                      if (!selected.serviceId) return false;
+                      return d.services && d.services.some(s => 
+                        (s._id || s) === selected.serviceId
+                      );
+                    }).length === 0 && (
+                      <p className="mt-2 text-sm text-yellow-600">
+                        ⚠️ Энэ үйлчилгээг үзүүлдэг эмч байхгүй байна
+                      </p>
+                    )}
+                  </>
+                )}
               </div>
 
               {/* Step 3: Date Selection */}
               {selected.doctorId && (
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  <label className="block text-sm font-semibold text-gray-700 mb-3">
                     3. Огноо сонгох <span className="text-red-500">*</span>
                   </label>
-                  <select
-                    value={selected.date}
-                    onChange={(e) => handleDateChange(e.target.value)}
-                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all outline-none"
-                  >
-                    <option value="">Огноо сонгох...</option>
-                    {getAvailableDates().map(date => {
-                      const d = new Date(date);
-                      const today = new Date();
-                      today.setHours(0, 0, 0, 0);
-                      const isToday = d.toDateString() === today.toDateString();
-                      return (
-                        <option key={date} value={date}>
-                          {isToday ? "Өнөөдөр" : d.toLocaleDateString('mn-MN', { weekday: 'short', year: 'numeric', month: 'long', day: 'numeric' })}
-                        </option>
-                      );
-                    })}
-                  </select>
+                  {availableDates.length === 0 ? (
+                    <div className="p-4 bg-yellow-50 border-2 border-yellow-200 rounded-lg text-yellow-800">
+                      <p className="font-semibold mb-1">⚠️ Энэ эмчид чөлөөт цаг байхгүй байна</p>
+                      <p className="text-sm">Өөр эмч эсвэл дараа дахин шалгана уу.</p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                      {availableDates.map(date => {
+                        const isSelected = selected.date === date;
+                        return (
+                          <button
+                            key={date}
+                            type="button"
+                            onClick={() => handleDateChange(date)}
+                            className={`px-4 py-3 rounded-xl border-2 font-semibold transition-all text-sm ${
+                              isSelected
+                                ? "border-blue-500 bg-gradient-to-r from-blue-500 to-green-500 text-white shadow-lg transform scale-105"
+                                : "border-gray-300 bg-white text-gray-700 hover:border-blue-300 hover:bg-blue-50 hover:shadow-md"
+                            }`}
+                          >
+                            {formatDate(date)}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -269,22 +342,26 @@ export default function PatientDashboard() {
                   <label className="block text-sm font-semibold text-gray-700 mb-3">
                     4. Цаг сонгох <span className="text-red-500">*</span>
                   </label>
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                  <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3">
                     {slots.map((slot, idx) => {
                       const slotDate = new Date(slot.start);
+                      const slotEnd = new Date(slot.end);
                       const timeStr = slotDate.toLocaleTimeString('mn-MN', { hour: '2-digit', minute: '2-digit' });
+                      const endTimeStr = slotEnd.toLocaleTimeString('mn-MN', { hour: '2-digit', minute: '2-digit' });
                       const isSelected = selected.slotStart === slot.start;
                       return (
                         <button
                           key={idx}
+                          type="button"
                           onClick={() => setSelected({ ...selected, slotStart: slot.start })}
-                          className={`px-4 py-3 rounded-lg border-2 font-semibold transition-all ${
+                          className={`px-4 py-3 rounded-xl border-2 font-semibold transition-all text-sm ${
                             isSelected
-                              ? "border-blue-500 bg-blue-50 text-blue-700 shadow-md"
-                              : "border-gray-300 bg-white text-gray-700 hover:border-blue-300 hover:bg-blue-50"
+                              ? "border-green-500 bg-gradient-to-r from-green-500 to-green-600 text-white shadow-lg transform scale-105"
+                              : "border-gray-300 bg-white text-gray-700 hover:border-green-300 hover:bg-green-50 hover:shadow-md"
                           }`}
                         >
-                          {timeStr}
+                          <div className="font-bold">{timeStr}</div>
+                          <div className="text-xs opacity-75">{endTimeStr}</div>
                         </button>
                       );
                     })}
@@ -292,9 +369,10 @@ export default function PatientDashboard() {
                 </div>
               )}
 
-              {selected.date && slots.length === 0 && selected.doctorId && (
-                <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg text-yellow-800">
-                  Энэ өдөр чөлөөт цаг байхгүй байна. Өөр өдөр сонгоно уу.
+              {selected.date && slots.length === 0 && selected.doctorId && availableDates.length > 0 && (
+                <div className="p-4 bg-yellow-50 border-2 border-yellow-200 rounded-lg text-yellow-800">
+                  <p className="font-semibold">⚠️ Энэ өдөр чөлөөт цаг байхгүй байна</p>
+                  <p className="text-sm mt-1">Дээрх огноонуудаас өөр өдөр сонгоно уу.</p>
                 </div>
               )}
 
